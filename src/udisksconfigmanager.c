@@ -145,7 +145,9 @@ parse_config_file (UDisksConfigManager         *manager,
                    GList                      **out_modules)
 {
   GKeyFile *config_file;
-  gchar *conf_filename;
+  gchar *conf_filename = NULL;
+  gchar *user_conf_filename;
+  gchar *system_conf_filename;
   gchar *load_preference;
   gchar *encryption;
   gchar *module_i;
@@ -153,17 +155,32 @@ parse_config_file (UDisksConfigManager         *manager,
   gchar **modules_tmp;
 
   /* Get modules and means of loading */
-  conf_filename = g_build_filename (G_DIR_SEPARATOR_S,
+  user_conf_filename = g_build_filename (G_DIR_SEPARATOR_S,
                                     manager->config_dir,
                                     PACKAGE_NAME_UDISKS2 ".conf",
                                     NULL);
 
-  udisks_debug ("Loading configuration file: %s", conf_filename);
+  system_conf_filename = g_build_filename (G_DIR_SEPARATOR_S,
+                                    "/usr/share/defaults/udisks2",
+                                    PACKAGE_NAME_UDISKS2 ".conf",
+                                    NULL);
+
+  udisks_debug ("Loading configuration file: %s", user_conf_filename);
 
   /* Load config */
   config_file = g_key_file_new ();
   g_key_file_set_list_separator (config_file, ',');
-  if (g_key_file_load_from_file (config_file, conf_filename, G_KEY_FILE_NONE, NULL))
+
+  if (g_key_file_load_from_file (config_file, user_conf_filename, G_KEY_FILE_NONE, NULL))
+  {
+        conf_filename = user_conf_filename;
+  }
+  else if (g_key_file_load_from_file (config_file, system_conf_filename, G_KEY_FILE_NONE, NULL))
+  {
+        conf_filename = system_conf_filename;
+  }
+
+  if (conf_filename)
     {
       if (out_modules != NULL)
         {
@@ -225,11 +242,12 @@ parse_config_file (UDisksConfigManager         *manager,
     }
   else
     {
-      udisks_warning ("Can't load configuration file %s", conf_filename);
+      udisks_warning ("Can't load configuration file %s", system_conf_filename);
     }
 
   g_key_file_free (config_file);
-  g_free (conf_filename);
+  g_free (user_conf_filename);
+  g_free (system_conf_filename);
 }
 
 static void
